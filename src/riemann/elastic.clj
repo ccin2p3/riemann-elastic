@@ -10,6 +10,16 @@
             [clojurewerkz.elastisch.rest :as esr]
             [riemann.streams :as streams]))
 
+(defn keys-to-map [key-map] 
+  (reduce-kv (fn [key-map k v] 
+                 (assoc-in key-map 
+                           (map keyword 
+                                (clojure.string/split (name k) #"\.")) 
+                              (if (map? v) 
+                                  (keys-to-map v) 
+                                  v))) 
+                                {} key-map))
+
 (defn make-index-timestamper [index period]
   (let [formatter (clj-time.format/formatter (str "'" index "'"
                                   (cond
@@ -64,7 +74,7 @@
            (.startsWith (name k) "_")
            [(.substring (name k) 1) (edn-safe-read v)]
            :else
-           [k v]))))
+           (vec (flatten (vec (keys-to-map {k v}))))))))
 
 (defn ^{:private true} elastic-event [event massage]
   (let [e (-> event
